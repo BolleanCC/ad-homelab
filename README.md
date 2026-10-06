@@ -30,10 +30,10 @@ and login troubleshooting.
 
 ## Problems I hit (so far)
 
-| # | Problem | Root cause |
-|---|---|---|
-| 1 | [VM failed to boot: "No bootable medium found"](docs/01-lab-setup.md#problem-1-vm-failed-to-boot) | ISO not attached to the optical drive |
-| 2 | [Black screen after boot](docs/01-lab-setup.md#problem-2-black-screen-after-boot) | Hyper-V on the host forced VirtualBox into slow Native API mode |
+| # | Problem | Root cause | Status |
+|---|---|---|---|
+| 1 | [VM failed to boot: "No bootable medium found"](docs/01-lab-setup.md#problem-1-vm-failed-to-boot) | ISO not attached to the optical drive | ✅ Fixed |
+| 2 | [Black screen after boot](docs/01-lab-setup.md#problem-2-black-screen-after-boot) | Hyper-V on the host forced VirtualBox into slow Native API mode | ✅ Fixed |
 
 ## Repository layout
 

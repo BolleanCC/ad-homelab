@@ -36,7 +36,7 @@ Status: ✅ Done
 
 ## Step 2: Install Windows Server 2022
 
-Status: 🟡 Blocked by the two problems below, now being fixed.
+Status: 🟡 In progress. The two boot problems below are fixed, and the installer now loads.
 
 ---
 
@@ -104,25 +104,68 @@ features, so VirtualBox falls back to the much slower Native API mode.
 
 **Fix**
 
-On the host (not the VM):
+All changes were made on the host, not inside the VM.
 
-```powershell
-# Run as Administrator
-bcdedit /set hypervisorlaunchtype off
-```
+1. Turned off the Windows hypervisor at boot:
 
-- Turned off **Memory Integrity** (Windows Security > Device security > Core isolation).
-- Disabled these Windows features: Hyper-V, Virtual Machine Platform, Windows Hypervisor Platform.
-- Rebooted the host.
-- Switched the VM back to BIOS mode (unchecked UEFI).
+   ```powershell
+   # Run as Administrator
+   bcdedit /set hypervisorlaunchtype off
+   ```
 
-To undo later (for WSL2 or Docker): `bcdedit /set hypervisorlaunchtype auto` and reboot.
+   ![bcdedit completed successfully](../screenshots/01-setup/problem-02-fix-01-bcdedit.png)
+
+2. Turned off **Memory Integrity** in Windows Security > Device security > Core isolation.
+   Memory Integrity uses virtualization-based security, which also keeps the hypervisor running.
+
+   | Before | After |
+   |---|---|
+   | ![Memory integrity on](../screenshots/01-setup/problem-02-fix-02-memory-integrity-on.png) | ![Memory integrity off](../screenshots/01-setup/problem-02-fix-03-memory-integrity-off.png) |
+
+3. Disabled these Windows features: Hyper-V, Virtual Machine Platform, Windows Hypervisor Platform.
+4. Rebooted the host.
+
+**Security trade-off**
+
+Turning off Memory Integrity lowers the host's protection against malicious kernel drivers.
+It does not affect RAM. I accepted this for my personal lab machine, kept Defender and
+Windows Update on, and documented how to undo it:
+
+- `bcdedit /set hypervisorlaunchtype auto`
+- Turn Memory Integrity back on
+- Reboot
+
+On a company laptop, I would not change a security setting like this without approval.
+
+**Side note: landed in the UEFI setup menu**
+
+After the reboot, I pressed keys repeatedly to catch the *"Press any key to boot from CD or DVD"*
+prompt. One of the keys opened the VM's UEFI firmware menu instead.
+I used **Boot Manager** to select the CD-ROM and pressed a key **once** at the prompt.
+
+![UEFI setup menu](../screenshots/01-setup/problem-02-fix-04-uefi-setup-menu.png)
 
 **Result**
 
-_TODO: fill in after reboot. Expected: VM Execution Engine shows VT-x or AMD-V, and the installer loads._
+VirtualBox now uses hardware virtualization directly.
+The status bar shows the VT-x icon instead of the turtle.
+
+| Field | Before | After |
+|---|---|---|
+| VM Execution Engine | native API | VT-x/AMD-V |
+| Nested Paging | Inactive | Active |
+| Unrestricted Execution | Inactive | Active |
+| Screen Resolution | 0x0 | 1280x800x32 |
+
+The VM boots from the ISO normally in UEFI mode, so switching back to BIOS was not needed.
+
+"Paravirtualization Interface: Hyper-V" is still shown. That's expected: it's an interface
+VirtualBox presents to Windows guests for better performance. It is not the host's Hyper-V.
+
+![Execution engine now VT-x](../screenshots/01-setup/problem-02-fix-05-vtx.png)
 
 **Lesson**
 
 The symptom was inside the VM, but the root cause was on the host.
-I confirmed the cause with evidence (the execution engine) instead of guessing.
+I confirmed the cause with evidence before changing anything,
+and I verified the fix with the same evidence afterward.
