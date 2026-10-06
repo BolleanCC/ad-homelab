@@ -40,6 +40,45 @@ Status: 🟡 In progress. The two boot problems below are fixed, and the install
 
 ---
 
+## Step 3: Rename the server to DC01
+
+`Server Manager > Local Server > Computer name > Change...`
+
+I renamed the server before promoting it, because renaming a domain controller later is risky.
+
+![Rename to DC01](../screenshots/01-setup/06-rename-dc01.png)
+
+Verified after restart:
+
+```cmd
+hostname
+```
+
+Status: ✅ Done
+
+> Note: Server Manager showed Event ID 41 (Kernel-Power) and 6008 (unexpected shutdown).
+> These came from powering off the VM during earlier troubleshooting, not from a real problem.
+
+---
+
+## Step 4: Set a static IP
+
+`ncpa.cpl > Ethernet > Properties > Internet Protocol Version 4 (TCP/IPv4)`
+
+| Setting | Value | Why |
+|---|---|---|
+| IP address | 192.168.10.10 | A DC needs a fixed IP so clients can always find it |
+| Subnet mask | 255.255.255.0 | Lab network is 192.168.10.0/24 |
+| Default gateway | (blank) | No router in the isolated lab network |
+| Preferred DNS | 127.0.0.1 | The DC will be the DNS server for the domain, so it points to itself |
+
+![Static IP](../screenshots/01-setup/07-dc01-static-ip.png)
+
+Verified with `ipconfig /all`.
+
+Status: ✅ Done
+---
+
 ## Troubleshooting
 
 Each problem follows the same format I'd use in a real ticket:
