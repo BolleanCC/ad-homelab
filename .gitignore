@@ -1,0 +1,22 @@
+# Never commit VM disks or install images (too large, GitHub limit is 100 MB per file)
+*.iso
+*.vdi
+*.vmdk
+*.vhd
+*.vhdx
+*.vbox
+*.vbox-prev
+*.sav
+*.nvram
+Logs/
+Snapshots/
+
+# Personal notes and secrets
+*.secret
+passwords.txt
+.env
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
