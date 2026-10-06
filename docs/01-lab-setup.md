@@ -143,7 +143,6 @@ After the reboot, I pressed keys repeatedly to catch the *"Press any key to boot
 prompt. One of the keys opened the VM's UEFI firmware menu instead.
 I used **Boot Manager** to select the CD-ROM and pressed a key **once** at the prompt.
 
-![UEFI setup menu](../screenshots/01-setup/problem-02-fix-04-uefi-setup-menu.png)
 
 **Result**
 
