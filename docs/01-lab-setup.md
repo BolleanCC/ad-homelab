@@ -7,10 +7,10 @@ create the `yardstick.local` domain, and join the client to it.
 
 ## Lab design
 
-| Machine | Role | IP | DNS |
-|---|---|---|---|
-| DC01 | Domain controller, DNS | 192.168.10.10 | 127.0.0.1 |
-| PC-102 | Domain client | 192.168.10.20 | 192.168.10.10 |
+| Machine | Role                   | IP            | DNS           |
+| ------- | ---------------------- | ------------- | ------------- |
+| DC01    | Domain controller, DNS | 192.168.10.10 | 127.0.0.1     |
+| PC-102  | Domain client          | 192.168.10.20 | 192.168.10.10 |
 
 Both VMs use a VirtualBox **Internal Network** named `yardstick-lab`.
 They can reach each other, but not my home network, like a small isolated office LAN.
@@ -19,16 +19,16 @@ They can reach each other, but not my home network, like a small isolated office
 
 ## Step 1: Create the DC01 VM
 
-| Setting | Value | Why |
-|---|---|---|
-| Name | DC01 | Name it before promotion. Renaming a DC later is risky. |
-| ISO | Windows Server 2022 Evaluation | Free 180-day evaluation from Microsoft |
-| Unattended install | Off | So I can choose the Desktop Experience edition myself |
-| Memory | 4096 MB | Enough for a small lab DC |
-| CPUs | 2 | |
-| Disk | 50 GB, dynamically allocated | Uses real disk space only as data is written |
-| Boot order | Optical before Hard Disk | Boot from the ISO first |
-| Network | Internal Network `yardstick-lab` | Isolated lab network |
+| Setting            | Value                            | Why                                                     |
+| ------------------ | -------------------------------- | ------------------------------------------------------- |
+| Name               | DC01                             | Name it before promotion. Renaming a DC later is risky. |
+| ISO                | Windows Server 2022 Evaluation   | Free 180-day evaluation from Microsoft                  |
+| Unattended install | Off                              | So I can choose the Desktop Experience edition myself   |
+| Memory             | 4096 MB                          | Enough for a small lab DC                               |
+| CPUs               | 2                                |                                                         |
+| Disk               | 50 GB, dynamically allocated     | Uses real disk space only as data is written            |
+| Boot order         | Optical before Hard Disk         | Boot from the ISO first                                 |
+| Network            | Internal Network `yardstick-lab` | Isolated lab network                                    |
 
 Status: ✅ Done
 
@@ -65,19 +65,31 @@ Status: ✅ Done
 
 `ncpa.cpl > Ethernet > Properties > Internet Protocol Version 4 (TCP/IPv4)`
 
-| Setting | Value | Why |
-|---|---|---|
-| IP address | 192.168.10.10 | A DC needs a fixed IP so clients can always find it |
-| Subnet mask | 255.255.255.0 | Lab network is 192.168.10.0/24 |
-| Default gateway | (blank) | No router in the isolated lab network |
-| Preferred DNS | 127.0.0.1 | The DC will be the DNS server for the domain, so it points to itself |
+| Setting         | Value         | Why                                                                  |
+| --------------- | ------------- | -------------------------------------------------------------------- |
+| IP address      | 192.168.10.10 | A DC needs a fixed IP so clients can always find it                  |
+| Subnet mask     | 255.255.255.0 | Lab network is 192.168.10.0/24                                       |
+| Default gateway | (blank)       | No router in the isolated lab network                                |
+| Preferred DNS   | 127.0.0.1     | The DC will be the DNS server for the domain, so it points to itself |
 
 ![Static IP](../screenshots/01-setup/07-dc01-static-ip.png)
 
 Verified with `ipconfig /all`.
 
-Status: ✅ Done
+## Status: ✅ Done
+
 ---
+
+## Step 5: Install the AD DS role
+
+`Server Manager > Manage > Add Roles and Features > Active Directory Domain Services`
+
+Installing the role only adds the software. The server is not a domain controller yet.
+It still needs to be promoted.
+
+![AD DS role installed](../screenshots/01-setup/08-adds-role-installed.png)
+
+Status: ✅ Done (after fixing Problem 4)
 
 ## Troubleshooting
 
@@ -88,7 +100,7 @@ Each problem follows the same format I'd use in a real ticket:
 
 **Symptom**
 
-The VM stopped with *"No bootable medium found! Please insert a bootable medium and reboot."*
+The VM stopped with _"No bootable medium found! Please insert a bootable medium and reboot."_
 
 ![No bootable medium found](../screenshots/01-setup/problem-01-no-bootable-medium.png)
 
@@ -109,7 +121,7 @@ With an empty hard disk and an empty DVD drive, there was nothing to boot from.
 
 **Note**
 
-The same error also appears if you miss the *"Press any key to boot from CD or DVD"* prompt.
+The same error also appears if you miss the _"Press any key to boot from CD or DVD"_ prompt.
 The installer only waits a few seconds, then falls through to the empty hard disk.
 **One error message can have more than one cause.**
 
@@ -128,11 +140,11 @@ The VirtualBox status bar showed a green turtle icon with constant CPU activity.
 
 `Machine > Session Information > Runtime Information`:
 
-| Field | Value | Meaning |
-|---|---|---|
+| Field               | Value        | Meaning                                                            |
+| ------------------- | ------------ | ------------------------------------------------------------------ |
 | VM Execution Engine | `native API` | VirtualBox is going through Hyper-V instead of using VT-x directly |
-| Nested Paging | Inactive | Hardware acceleration is not in use |
-| Screen Resolution | `0x0` | The virtual display never initialized |
+| Nested Paging       | Inactive     | Hardware acceleration is not in use                                |
+| Screen Resolution   | `0x0`        | The virtual display never initialized                              |
 
 ![Session information showing native API](../screenshots/01-setup/problem-02-native-api.png)
 
@@ -157,8 +169,8 @@ All changes were made on the host, not inside the VM.
 2. Turned off **Memory Integrity** in Windows Security > Device security > Core isolation.
    Memory Integrity uses virtualization-based security, which also keeps the hypervisor running.
 
-   | Before | After |
-   |---|---|
+   | Before                                                                                    | After                                                                                       |
+   | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
    | ![Memory integrity on](../screenshots/01-setup/problem-02-fix-02-memory-integrity-on.png) | ![Memory integrity off](../screenshots/01-setup/problem-02-fix-03-memory-integrity-off.png) |
 
 3. Disabled these Windows features: Hyper-V, Virtual Machine Platform, Windows Hypervisor Platform.
@@ -178,22 +190,21 @@ On a company laptop, I would not change a security setting like this without app
 
 **Side note: landed in the UEFI setup menu**
 
-After the reboot, I pressed keys repeatedly to catch the *"Press any key to boot from CD or DVD"*
+After the reboot, I pressed keys repeatedly to catch the _"Press any key to boot from CD or DVD"_
 prompt. One of the keys opened the VM's UEFI firmware menu instead.
 I used **Boot Manager** to select the CD-ROM and pressed a key **once** at the prompt.
-
 
 **Result**
 
 VirtualBox now uses hardware virtualization directly.
 The status bar shows the VT-x icon instead of the turtle.
 
-| Field | Before | After |
-|---|---|---|
-| VM Execution Engine | native API | VT-x/AMD-V |
-| Nested Paging | Inactive | Active |
-| Unrestricted Execution | Inactive | Active |
-| Screen Resolution | 0x0 | 1280x800x32 |
+| Field                  | Before     | After       |
+| ---------------------- | ---------- | ----------- |
+| VM Execution Engine    | native API | VT-x/AMD-V  |
+| Nested Paging          | Inactive   | Active      |
+| Unrestricted Execution | Inactive   | Active      |
+| Screen Resolution      | 0x0        | 1280x800x32 |
 
 The VM boots from the ISO normally in UEFI mode, so switching back to BIOS was not needed.
 
@@ -207,3 +218,47 @@ VirtualBox presents to Windows guests for better performance. It is not the host
 The symptom was inside the VM, but the root cause was on the host.
 I confirmed the cause with evidence before changing anything,
 and I verified the fix with the same evidence afterward.
+
+---
+
+### Problem 4: Installed the wrong role (AD CS instead of AD DS)
+
+**Symptom**
+
+The results page said *Active Directory Certificate Services*, and a new **AD CS** item appeared in Server Manager.
+
+![Wrong role installed](../screenshots/01-setup/problem-04-wrong-role-adcs.png)
+
+**Cause**
+
+AD CS (Certificate Services) and AD DS (Domain Services) sit next to each other in the role list,
+and I checked the wrong one.
+
+| Role | Purpose |
+|---|---|
+| AD DS | Creates the domain, stores users and computers, handles logons |
+| AD CS | Runs an internal certificate authority that issues certificates |
+
+**Fix**
+
+AD CS was installed but not configured yet, so removing it was clean:
+
+```powershell
+Uninstall-WindowsFeature ADCS-Cert-Authority -IncludeManagementTools -Restart
+Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+```
+
+I did not revert to a snapshot, because the latest snapshot was taken before the rename and static IP.
+
+**Result**
+
+```powershell
+Get-WindowsFeature AD-Certificate, AD-Domain-Services
+```
+
+AD-Certificate: Available. AD-Domain-Services: Installed.
+
+**Lesson / Prevention**
+
+Read the confirmation page before clicking Install. If AD CS had been configured as a CA,
+the server's name and domain membership would have been locked, and fixing it would be much harder.
