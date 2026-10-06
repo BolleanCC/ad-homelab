@@ -36,7 +36,7 @@ Status: ✅ Done
 
 ## Step 2: Install Windows Server 2022
 
-Status: 🟡 In progress. The two boot problems below are fixed, and the installer now loads.
+Status: ✅ Done. The two boot problems below are fixed, and the installer now loads.
 
 ---
 
