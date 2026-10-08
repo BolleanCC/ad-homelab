@@ -15,9 +15,26 @@ create the `yardstick.local` domain, and join the client to it.
 Both VMs use a VirtualBox **Internal Network** named `yardstick-lab`.
 They can reach each other, but not my home network, like a small isolated office LAN.
 
+## Progress
+
+| Step | Task | Status |
+| ---- | ---- | ------ |
+| 1 | Create the DC01 VM | ✅ |
+| 2 | Install Windows Server 2022 | ✅ (after Problems 1, 2, 3) |
+| 3 | Rename to DC01 | ✅ |
+| 4 | Set a static IP | ✅ (after Problem 5) |
+| 5 | Install the AD DS role | ✅ (after Problem 4) |
+| 6 | Promote to domain controller | ✅ |
+| 7 | Verify the domain controller | ✅ |
+| 8 | Create and join PC-102 | ⬜ Next |
+
 ---
 
 ## Step 1: Create the DC01 VM
+
+Hardware virtualization was already enabled on the host:
+
+![Virtualization enabled](../screenshots/01-setup/00-virtualization-enabled.png)
 
 | Setting            | Value                            | Why                                                     |
 | ------------------ | -------------------------------- | ------------------------------------------------------- |
@@ -30,13 +47,24 @@ They can reach each other, but not my home network, like a small isolated office
 | Boot order         | Optical before Hard Disk         | Boot from the ISO first                                 |
 | Network            | Internal Network `yardstick-lab` | Isolated lab network                                    |
 
+![New VM](../screenshots/01-setup/01-dc01-new-vm.png)
+![VM summary](../screenshots/01-setup/02-dc01-summary.png)
+![Internal network](../screenshots/01-setup/03-dc01-internal-network.png)
+
 Status: ✅ Done
 
 ---
 
 ## Step 2: Install Windows Server 2022
 
-Status: ✅ Done. The two boot problems below are fixed, and the installer now loads.
+Getting the installer to boot took three fixes (see Problems 1, 2 and 3).
+I chose **Standard Evaluation (Desktop Experience)**, which includes the full GUI,
+and a **Custom** install because the disk was empty.
+
+![Edition selection](../screenshots/01-setup/04-server-edition.png)
+![First login](../screenshots/01-setup/05-server-manager-first-login.png)
+
+Status: ✅ Done
 
 ---
 
@@ -48,16 +76,12 @@ I renamed the server before promoting it, because renaming a domain controller l
 
 ![Rename to DC01](../screenshots/01-setup/06-rename-dc01.png)
 
-Verified after restart:
-
-```cmd
-hostname
-```
-
-Status: ✅ Done
+Verified after restart with `hostname`.
 
 > Note: Server Manager showed Event ID 41 (Kernel-Power) and 6008 (unexpected shutdown).
 > These came from powering off the VM during earlier troubleshooting, not from a real problem.
+
+Status: ✅ Done
 
 ---
 
@@ -74,12 +98,10 @@ Status: ✅ Done
 
 ![Static IP](../screenshots/01-setup/07-dc01-static-ip.png)
 
-Verified with `ipconfig /all`.
+> **Update:** this setting was not actually saved the first time. I found out after
+> promotion, when dcdiag failed. See [Problem 5](#problem-5-dcdiag-failed-the-connectivity-test).
 
-## Status: ✅ Done
-```markdown
-> **Update:** the static IP was not actually saved. I found this after promotion. See Problem 5.
-```
+Status: ✅ Done (after Problem 5)
 
 ---
 
@@ -92,7 +114,10 @@ It still needs to be promoted.
 
 ![AD DS role installed](../screenshots/01-setup/08-adds-role-installed.png)
 
-Status: ✅ Done (after fixing Problem 4)
+Status: ✅ Done (after Problem 4)
+
+---
+
 ## Step 6: Promote DC01 to a domain controller
 
 `Server Manager > Notifications flag > Promote this server to a domain controller`
@@ -105,16 +130,45 @@ Status: ✅ Done (after fixing Problem 4)
 | Additional Options | NetBIOS name `YARDSTICK` | Lets users sign in as `YARDSTICK\username` |
 | Paths | Defaults (`C:\Windows\NTDS`, `C:\Windows\SYSVOL`) | NTDS.dit is the AD database, SYSVOL holds Group Policy files |
 
-![Promote wizard](../screenshots/01-setup/09-promote-new-forest.png)
-
 The server restarted, and I signed in as `YARDSTICK\Administrator`.
 
-Status: ✅ Done (see Problem 5 for an issue found after promotion)
-````
+Status: ✅ Done
+
+---
+
+## Step 7: Verify the domain controller
+
+| Check | Tool | Result |
+|---|---|---|
+| Domain exists | `Get-ADDomain` | DNSRoot `yardstick.local`, NetBIOS `YARDSTICK`, PDC `DC01.yardstick.local` |
+| ADUC | `dsa.msc` | Domain Controllers OU contains DC01 |
+| DNS zones | `dnsmgmt.msc` | `yardstick.local` and `_msdcs.yardstick.local` exist |
+| SRV record | `nslookup -type=srv _ldap._tcp.dc._msdcs.yardstick.local` | Points to `dc01.yardstick.local`, port 389 |
+| Health | `dcdiag /q` | No output, after fixing Problem 5 |
+
+![ADUC](../screenshots/01-setup/11-aduc.png)
+![DNS zones](../screenshots/01-setup/12-dns-zones.png)
+
+Snapshot taken: `DC01-03-dc-promoted-healthy`.
+
+Status: ✅ Done
+
+---
+
 ## Troubleshooting
 
 Each problem follows the same format I'd use in a real ticket:
 **Symptom → Evidence → Cause → Fix → Result**.
+
+| # | Problem | Root cause |
+|---|---|---|
+| 1 | VM failed to boot | ISO not attached |
+| 2 | Black screen after boot | Hyper-V on the host |
+| 3 | VM found the CD but would not boot | Downloaded the Language Packs ISO, not the install ISO |
+| 4 | Installed the wrong role | Checked AD CS instead of AD DS |
+| 5 | dcdiag failed the Connectivity test | Static IP not saved, adapter fell back to APIPA |
+
+---
 
 ### Problem 1: VM failed to boot
 
@@ -136,14 +190,14 @@ With an empty hard disk and an empty DVD drive, there was nothing to boot from.
 **Fix**
 
 1. Powered off the VM.
-2. `Settings > Storage`: attached `Windows_Server_2022.iso` to the optical drive.
+2. `Settings > Storage`: attached the ISO to the optical drive.
 3. `Settings > System`: confirmed **Optical** boots before **Hard Disk**.
 
 **Note**
 
 The same error also appears if you miss the _"Press any key to boot from CD or DVD"_ prompt.
-The installer only waits a few seconds, then falls through to the empty hard disk.
-**One error message can have more than one cause.**
+Later I found the ISO itself was the wrong one, which was likely part of this problem too
+(see Problem 3). **One error message can have more than one cause.**
 
 ---
 
@@ -189,8 +243,8 @@ All changes were made on the host, not inside the VM.
 2. Turned off **Memory Integrity** in Windows Security > Device security > Core isolation.
    Memory Integrity uses virtualization-based security, which also keeps the hypervisor running.
 
-   | Before                                                                                    | After                                                                                       |
-   | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+   | Before | After |
+   | --- | --- |
    | ![Memory integrity on](../screenshots/01-setup/problem-02-fix-02-memory-integrity-on.png) | ![Memory integrity off](../screenshots/01-setup/problem-02-fix-03-memory-integrity-off.png) |
 
 3. Disabled these Windows features: Hyper-V, Virtual Machine Platform, Windows Hypervisor Platform.
@@ -210,14 +264,10 @@ On a company laptop, I would not change a security setting like this without app
 
 **Side note: landed in the UEFI setup menu**
 
-After the reboot, I pressed keys repeatedly to catch the _"Press any key to boot from CD or DVD"_
-prompt. One of the keys opened the VM's UEFI firmware menu instead.
-I used **Boot Manager** to select the CD-ROM and pressed a key **once** at the prompt.
+After the reboot, I pressed keys repeatedly to catch the boot prompt, and one of them opened
+the VM's UEFI firmware menu. I used **Boot Manager** to select the CD-ROM instead.
 
 **Result**
-
-VirtualBox now uses hardware virtualization directly.
-The status bar shows the VT-x icon instead of the turtle.
 
 | Field                  | Before     | After       |
 | ---------------------- | ---------- | ----------- |
@@ -225,8 +275,6 @@ The status bar shows the VT-x icon instead of the turtle.
 | Nested Paging          | Inactive   | Active      |
 | Unrestricted Execution | Inactive   | Active      |
 | Screen Resolution      | 0x0        | 1280x800x32 |
-
-The VM boots from the ISO normally in UEFI mode, so switching back to BIOS was not needed.
 
 "Paravirtualization Interface: Hyper-V" is still shown. That's expected: it's an interface
 VirtualBox presents to Windows guests for better performance. It is not the host's Hyper-V.
@@ -241,11 +289,52 @@ and I verified the fix with the same evidence afterward.
 
 ---
 
+### Problem 3: VM found the CD but would not boot
+
+**Symptom**
+
+With VT-x working, selecting the CD-ROM in the VM's UEFI Boot Manager only flashed
+the screen and returned to the menu.
+
+**Evidence**
+
+I mounted the ISO on my host. The volume label was `SERVER_FOD_LP_X64FRE_MULTI_DV9`,
+and it only contained two folders. There was no `setup.exe`, no `sources\install.wim`,
+and no boot files.
+
+![Wrong ISO](../screenshots/01-setup/problem-03-wrong-iso-fod-lp.png)
+
+**Cause**
+
+FOD_LP means *Features on Demand and Language Packs*. It's an add-on disc for a server
+that's already installed, not installation media. On Microsoft's Evaluation Center page,
+I clicked the "ISO" link in the overview text, which downloads this add-on ISO.
+The installation ISO is under **Get started for free > Download the ISO**.
+
+![Two ISO links](../screenshots/01-setup/problem-03-download-page-two-iso-links.png)
+
+**Fix**
+
+Downloaded the correct ISO, mounted it on the host to check for `setup.exe` and
+`sources\install.wim`, then attached it to the VM.
+
+**Result**
+
+The installer booted and listed the Windows Server 2022 editions (see Step 2).
+
+**Lesson / Prevention**
+
+Verify install media before using it: file name, size, and contents.
+When every setting looks right, check the input itself.
+
+---
+
 ### Problem 4: Installed the wrong role (AD CS instead of AD DS)
 
 **Symptom**
 
-The results page said *Active Directory Certificate Services*, and a new **AD CS** item appeared in Server Manager.
+The results page said *Active Directory Certificate Services*, and a new **AD CS** item
+appeared in Server Manager.
 
 ![Wrong role installed](../screenshots/01-setup/problem-04-wrong-role-adcs.png)
 
@@ -278,6 +367,8 @@ Get-WindowsFeature AD-Certificate, AD-Domain-Services
 
 AD-Certificate: Available. AD-Domain-Services: Installed.
 
+![Fix verified](../screenshots/01-setup/problem-04-fix-verified.png)
+
 **Lesson / Prevention**
 
 Read the confirmation page before clicking Install. If AD CS had been configured as a CA,
@@ -289,7 +380,7 @@ the server's name and domain membership would have been locked, and fixing it wo
 
 **Symptom**
 
-After promoting DC01, `dcdiag /q` reported:
+After promoting DC01, the domain and SRV record looked fine, but `dcdiag /q` reported:
 
 ```
 The host <GUID>._msdcs.yardstick.local could not be resolved to an IP address.
@@ -298,7 +389,6 @@ DC01 failed test Connectivity
 ```
 
 `nslookup yardstick.local` also returned a name but no address.
-The SRV record `_ldap._tcp.dc._msdcs.yardstick.local` was fine and pointed to `dc01.yardstick.local`.
 
 ![dcdiag failed](../screenshots/01-setup/problem-05-01-dcdiag-failed.png)
 
@@ -306,33 +396,85 @@ The SRV record `_ldap._tcp.dc._msdcs.yardstick.local` was fine and pointed to `d
 
 1. `dc01.yardstick.local` resolved to **169.254.62.28**, not 192.168.10.10.
    169.254.x.x is an APIPA address, which Windows assigns itself when it has no valid IP.
-   This suggested the static IP was not active on the adapter.
 
    ![Resolve DC01](../screenshots/01-setup/problem-05-02-resolve-dc01.png)
-   Lesson so far: My first guess was a missing DNS record. The evidence pointed to a deeper problem: the network adapter itself. Collecting evidence before fixing stopped me from fixing the wrong thing.
 
-2. `ipconfig /all` showed the real problem: **DHCP Enabled: Yes**, and only an
+2. `ipconfig /all` showed **DHCP Enabled: Yes** and only an
    **Autoconfiguration IPv4 Address: 169.254.62.28**. There was no 192.168.10.10.
-   The static IP was never saved. DNS showed ::1 and 127.0.0.1 because the promotion
-   wizard sets those automatically, which made the adapter look configured.
+   DNS showed ::1 and 127.0.0.1 because the promotion wizard sets those automatically,
+   which made the adapter look configured.
 
    ![ipconfig](../screenshots/01-setup/problem-05-03-ipconfig.png)
 
-3. In DNS Manager, the yardstick.local zone was missing [fill in: which records].
-
-   ![DNS zone before](../screenshots/01-setup/problem-05-04-dns-zone-before.png)
-
 **Cause**
 
-
+The static IP on DC01 was never saved (the dialog was not confirmed with OK).
+The adapter stayed in DHCP mode, and with no DHCP server on the internal network,
+Windows fell back to APIPA. The promotion wizard's prerequisite check had warned that an
+adapter had no static IP, but I treated all yellow warnings as safe to ignore.
 
 **Fix**
 
+1. Set the static IP again in `ncpa.cpl` and clicked **OK** on both dialogs.
 
+   ![Static IP set](../screenshots/01-setup/problem-05-05-static-ip-set.png)
+
+2. Confirmed with `ipconfig /all`: DHCP Enabled: No, IPv4 Address: 192.168.10.10.
+
+   ![ipconfig after](../screenshots/01-setup/problem-05-06-ipconfig-after.png)
+
+3. Re-registered DNS and restarted Netlogon:
+
+   ```powershell
+   ipconfig /registerdns
+   Restart-Service Netlogon
+   ```
+
+   ![registerdns](../screenshots/01-setup/problem-05-07-registerdns.png)
+
+4. Checked DNS Manager: `dc01` and `(same as parent folder)` now point to 192.168.10.10.
+
+   ![DNS zone after](../screenshots/01-setup/problem-05-08-dns-zone-after.png)
 
 **Result**
 
+`dc01.yardstick.local` resolves to 192.168.10.10, and the Connectivity test passes.
 
+![Verified](../screenshots/01-setup/problem-05-09-verified.png)
+
+dcdiag still flagged **DFSREvent**. That test looks at Error and Warning events in the
+DFS Replication log from the last 24 hours, so I checked whether SYSVOL was actually healthy:
+
+- `net share` lists **SYSVOL** and **NETLOGON**, so SYSVOL is initialized and shared.
+
+  ![SYSVOL shared](../screenshots/01-setup/problem-05-10-sysvol-shared.png)
+
+- The DFS Replication log shows Event **1202** (couldn't contact a DC) every hour while the
+  adapter was on APIPA. After the fix: Event **4602** (SYSVOL initialized) and
+  Event **6018** (configuration updated), with no new errors.
+
+  ![DFSR events](../screenshots/01-setup/problem-05-11-dfsr-events.png)
+
+- The next day dcdiag still flagged DFSREvent. The DC was set to UTC-08:00, two hours behind
+  my local time, so the last warning was only about 22 hours old. Listing the last 24 hours of
+  errors and warnings showed only the two events from before the fix:
+
+  ```powershell
+  Get-WinEvent -FilterHashtable @{LogName='DFS Replication'; Level=2,3; StartTime=(Get-Date).AddHours(-24)} |
+    Select-Object TimeCreated, Id, LevelDisplayName
+  ```
+
+  ![DFSR last 24h](../screenshots/01-setup/problem-05-12-dfsr-last-24h.png)
+
+Once those events aged out, `dcdiag /q` returned no output:
+
+![dcdiag clean](../screenshots/01-setup/problem-05-13-dcdiag-clean.png)
 
 **Lesson**
 
+- My first guess was a missing DNS record. The evidence (169.254 in `ipconfig /all`) pointed to
+  the adapter. If I had run `ipconfig /registerdns` first, I would have registered the wrong address.
+- When there are several errors, fix the first one. The firewall hint in dcdiag was a side effect.
+- Some tools report history. DFSREvent was showing errors from before the fix.
+- Check the time zone before reading log timestamps.
+- Not every yellow warning is safe to ignore.
