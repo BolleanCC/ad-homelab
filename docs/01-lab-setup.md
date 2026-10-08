@@ -77,6 +77,9 @@ Status: ✅ Done
 Verified with `ipconfig /all`.
 
 ## Status: ✅ Done
+```markdown
+> **Update:** the static IP was not actually saved. I found this after promotion. See Problem 5.
+```
 
 ---
 
@@ -90,7 +93,24 @@ It still needs to be promoted.
 ![AD DS role installed](../screenshots/01-setup/08-adds-role-installed.png)
 
 Status: ✅ Done (after fixing Problem 4)
+## Step 6: Promote DC01 to a domain controller
 
+`Server Manager > Notifications flag > Promote this server to a domain controller`
+
+| Wizard page | Choice | Why |
+|---|---|---|
+| Deployment Configuration | Add a new forest, `yardstick.local` | First DC, so it creates a new forest |
+| Domain Controller Options | DNS server and Global Catalog checked, DSRM password set | DSRM is the recovery mode for AD |
+| DNS Options | Ignored the delegation warning | Normal in a new forest with no parent zone |
+| Additional Options | NetBIOS name `YARDSTICK` | Lets users sign in as `YARDSTICK\username` |
+| Paths | Defaults (`C:\Windows\NTDS`, `C:\Windows\SYSVOL`) | NTDS.dit is the AD database, SYSVOL holds Group Policy files |
+
+![Promote wizard](../screenshots/01-setup/09-promote-new-forest.png)
+
+The server restarted, and I signed in as `YARDSTICK\Administrator`.
+
+Status: ✅ Done (see Problem 5 for an issue found after promotion)
+````
 ## Troubleshooting
 
 Each problem follows the same format I'd use in a real ticket:
@@ -262,3 +282,57 @@ AD-Certificate: Available. AD-Domain-Services: Installed.
 
 Read the confirmation page before clicking Install. If AD CS had been configured as a CA,
 the server's name and domain membership would have been locked, and fixing it would be much harder.
+
+---
+
+### Problem 5: dcdiag failed the Connectivity test
+
+**Symptom**
+
+After promoting DC01, `dcdiag /q` reported:
+
+```
+The host <GUID>._msdcs.yardstick.local could not be resolved to an IP address.
+Got error while checking LDAP and RPC connectivity.
+DC01 failed test Connectivity
+```
+
+`nslookup yardstick.local` also returned a name but no address.
+The SRV record `_ldap._tcp.dc._msdcs.yardstick.local` was fine and pointed to `dc01.yardstick.local`.
+
+![dcdiag failed](../screenshots/01-setup/problem-05-01-dcdiag-failed.png)
+
+**Evidence**
+
+1. `dc01.yardstick.local` resolved to **169.254.62.28**, not 192.168.10.10.
+   169.254.x.x is an APIPA address, which Windows assigns itself when it has no valid IP.
+   This suggested the static IP was not active on the adapter.
+
+   ![Resolve DC01](../screenshots/01-setup/problem-05-02-resolve-dc01.png)
+   Lesson so far: My first guess was a missing DNS record. The evidence pointed to a deeper problem: the network adapter itself. Collecting evidence before fixing stopped me from fixing the wrong thing.
+
+2. `ipconfig /all` showed the real problem: **DHCP Enabled: Yes**, and only an
+   **Autoconfiguration IPv4 Address: 169.254.62.28**. There was no 192.168.10.10.
+   The static IP was never saved. DNS showed ::1 and 127.0.0.1 because the promotion
+   wizard sets those automatically, which made the adapter look configured.
+
+   ![ipconfig](../screenshots/01-setup/problem-05-03-ipconfig.png)
+
+3. In DNS Manager, the yardstick.local zone was missing [fill in: which records].
+
+   ![DNS zone before](../screenshots/01-setup/problem-05-04-dns-zone-before.png)
+
+**Cause**
+
+
+
+**Fix**
+
+
+
+**Result**
+
+
+
+**Lesson**
+
