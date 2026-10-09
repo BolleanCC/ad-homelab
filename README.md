@@ -34,6 +34,7 @@ and login troubleshooting.
 |---|---|---|---|
 | 1 | [VM failed to boot: "No bootable medium found"](docs/01-lab-setup.md#problem-1-vm-failed-to-boot) | ISO not attached to the optical drive | ✅ Fixed |
 | 2 | [Black screen after boot](docs/01-lab-setup.md#problem-2-black-screen-after-boot) | Hyper-V on the host forced VirtualBox into slow Native API mode | ✅ Fixed |
+| 7 | [Department count showed an empty group](docs/02-user-management.md#problem-7-department-count-showed-an-empty-group) | Hand-created user had no Department attribute | ✅ Fixed |
 
 ## Repository layout
 
