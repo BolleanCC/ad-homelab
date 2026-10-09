@@ -26,7 +26,9 @@ They can reach each other, but not my home network, like a small isolated office
 | 5 | Install the AD DS role | ✅ (after Problem 4) |
 | 6 | Promote to domain controller | ✅ |
 | 7 | Verify the domain controller | ✅ |
-| 8 | Create and join PC-102 | ⬜ Next |
+| 8 | Create PC-102 and install Windows 11 | ✅ |
+| 9 | Join PC-102 to the domain | ✅ (after Problem 6) |
+| — | **Phase 1 complete** | ✅ |
 
 ---
 
@@ -154,6 +156,60 @@ Snapshot taken: `DC01-03-dc-promoted-healthy`.
 Status: ✅ Done
 
 ---
+
+---
+
+## Step 8: Create PC-102 and install Windows 11
+
+VirtualBox detected **Windows 11 Enterprise Evaluation** in the OS Edition field.
+That only works when the ISO contains an install image, so it confirmed the media was correct.
+On the server, this field was empty, which was an early sign of Problem 3.
+
+![PC-102 new VM](../screenshots/01-setup/14-pc102-new-vm.png)
+
+| Setting | Value | Why |
+|---|---|---|
+| Name | PC-102 | Matches the computer name it will have in AD |
+| ISO | Windows 11 Enterprise Evaluation | Home edition can't join a domain |
+| Memory / CPUs / Disk | 4096 MB / 2 / 64 GB | |
+| UEFI, TPM 2.0, Secure Boot | On | Required by Windows 11 |
+| Network | Internal Network `yardstick-lab` | Same network as DC01 |
+
+There is no internet on the lab network, so during setup I created a **local admin account**.
+If the PC ever loses contact with the domain, I can still sign in locally to fix it.
+
+Status: ✅ Done
+
+---
+
+## Step 9: Join PC-102 to the domain
+
+Before joining, I set the client's static IP (192.168.10.20) and pointed its DNS to DC01
+(192.168.10.10). My first attempt had the DNS wrong, see Problem 6.
+
+Then: `sysdm.cpl > Computer Name > Change > Domain: yardstick.local`,
+using `YARDSTICK\Administrator`, and restarted.
+
+**Verified on PC-102**
+
+| Command | Result | Meaning |
+|---|---|---|
+| `whoami` | `yardstick\administrator` | Signed in with a domain account |
+| `echo %logonserver%` | `\\DC01` | DC01 authenticated the logon |
+| `systeminfo \| findstr /i "domain"` | `yardstick.local` | PC-102 is a domain member |
+
+![whoami on PC-102](../screenshots/01-setup/18-pc102-whoami.png)
+
+**Verified on DC01**
+
+A computer object for PC-102 appeared in the default **Computers** container.
+In a real company, I'd move it into the right OU so the correct Group Policies apply.
+
+![Get-ADComputer PC-102](../screenshots/01-setup/20-get-adcomputer-pc102.png)
+
+Snapshots: `DC01-04-client-joined`, `PC-102-02-domain-joined`.
+
+Status: ✅ Done
 
 ## Troubleshooting
 
