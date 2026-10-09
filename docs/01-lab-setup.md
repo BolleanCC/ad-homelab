@@ -478,3 +478,44 @@ Once those events aged out, `dcdiag /q` returned no output:
 - Some tools report history. DFSREvent was showing errors from before the fix.
 - Check the time zone before reading log timestamps.
 - Not every yellow warning is safe to ignore.
+
+---
+
+### Problem 6: PC-102 could not resolve yardstick.local
+
+**Symptom**
+
+Before joining the domain, `ping 192.168.10.10` worked, but `nslookup yardstick.local`
+returned *No response from server*.
+
+![nslookup failed](../screenshots/01-setup/problem-06-01-nslookup-failed.png)
+
+**Evidence**
+
+- Ping succeeded, so the network path to DC01 was fine.
+- nslookup showed the DNS server it was asking: **192.168.10.20**, which is PC-102 itself.
+- `ipconfig /all` confirmed DNS Servers was set to 192.168.10.20.
+
+![ipconfig before](../screenshots/01-setup/problem-06-02-ipconfig-before.png)
+
+**Cause**
+
+I typed the client's own IP into the Preferred DNS field instead of the DC's IP.
+PC-102 doesn't run DNS, so nothing answered.
+
+**Fix**
+
+Set Preferred DNS to 192.168.10.10 and flushed the DNS cache.
+
+![DNS fixed](../screenshots/01-setup/problem-06-03-dns-fixed.png)
+
+**Result**
+
+`yardstick.local` resolves to 192.168.10.10, and the SRV record points to `dc01.yardstick.local`.
+
+![nslookup ok](../screenshots/01-setup/problem-06-04-nslookup-ok.png)
+
+**Lesson**
+
+Ping only proves the network works. nslookup's `Address:` line shows which DNS server
+the client is actually asking. A client must use the DC for DNS, or it can't find the domain.
